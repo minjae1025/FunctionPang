@@ -1,0 +1,9 @@
+@font-face {
+    font-family: 'Pretendard';
+    src: url('./assets/fonts/Pretendard.woff2') format('woff2');
+    font-display: swap;
+}
+
+html, head, body {
+    font-family: 'Pretendard', sans-serif;
+}
