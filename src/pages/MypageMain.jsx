@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import HistoryTable from '../components/HistoryTable';
 import UserManageModal from '../components/UserManageModal';
 import ResetConfirmModal from '../components/ResetConfirmModal';
-
-const Mypage = () => {
+const MypageMain = () => {
   const navigate = useNavigate();
   // --- 상태 관리 ---
-  const [currentUser, setCurrentUser] = useState('');
-  const [users, setUsers] = useState([]); 
+  const [currentUser, setCurrentUser] = useState(() => {
+    return localStorage.getItem('functionpang_currentUser') || '';
+  });
+  const [users, setUsers] = useState([]);
   const [historyData, setHistoryData] = useState([]);
   const [filterLang, setFilterLang] = useState('Javascript');
   
@@ -17,41 +18,32 @@ const Mypage = () => {
 
   // --- 로컬 스토리지 연동 ---
   useEffect(() => {
-    const savedCurrentUser = localStorage.getItem('functionpang_currentUser');
     const savedUsers = localStorage.getItem('functionpang_users');
     const savedHistory = localStorage.getItem('functionpang_history');
+    const savedCurrentUser = localStorage.getItem('functionpang_currentUser');
 
-    let currentUsersArray = [];
+    const dummyNames = ['이민준', '김민재', '윤정후', '박준원'];
 
     if (savedUsers) {
-      const dummyNames = ['이민준', '김민재', '윤정후', '박준원'];
-      currentUsersArray = JSON.parse(savedUsers).filter(name => !dummyNames.includes(name));
-      
-      if (currentUsersArray.length !== JSON.parse(savedUsers).length) {
-        localStorage.setItem('functionpang_users', JSON.stringify(currentUsersArray));
+      const parsedUsers = JSON.parse(savedUsers).filter(name => !dummyNames.includes(name));
+      setUsers(parsedUsers);
+      if (parsedUsers.length !== JSON.parse(savedUsers).length) {
+        localStorage.setItem('functionpang_users', JSON.stringify(parsedUsers));
       }
     }
 
-    if (savedCurrentUser && !['이민준', '김민재', '윤정후', '박준원'].includes(savedCurrentUser)) {
-      setCurrentUser(savedCurrentUser);
-      if (!currentUsersArray.includes(savedCurrentUser)) {
-        currentUsersArray.push(savedCurrentUser);
-        localStorage.setItem('functionpang_users', JSON.stringify(currentUsersArray));
-      }
-    } else {
-      setCurrentUser('로그인 필요'); 
-      if (['이민준', '김민재', '윤정후', '박준원'].includes(savedCurrentUser)) {
-        localStorage.removeItem('functionpang_currentUser');
-      }
+    if (savedCurrentUser && dummyNames.includes(savedCurrentUser)) {
+      setCurrentUser('');
+      localStorage.removeItem('functionpang_currentUser');
     }
     
-    setUsers(currentUsersArray);
-
+    // 더미 데이터 없이 깔끔하게 저장된 기록만 가져오거나 빈 배열 유지
     if (savedHistory) {
       setHistoryData(JSON.parse(savedHistory));
     }
   }, []);
 
+  // --- 공통 로직 함수들 ---
   const handleUpdateUsers = (newUsers) => {
     setUsers(newUsers);
     localStorage.setItem('functionpang_users', JSON.stringify(newUsers));
@@ -117,7 +109,7 @@ const Mypage = () => {
           </div>
         </div>
 
-        {/* 테이블 컴포넌트 */}
+        {/* 1. 분리된 테이블 컴포넌트 렌더링 */}
         <HistoryTable filteredHistory={filteredHistory} />
 
         {/* 하단 버튼들 */}
@@ -126,7 +118,7 @@ const Mypage = () => {
           <button onClick={() => setIsModalOpen(true)} style={{ backgroundColor: '#6b8aef', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: 'bold' }}>사용자 관리</button>
         </div>
 
-        {/* 사용자 관리 모달 */}
+        {/* 2. 분리된 사용자 관리 모달 컴포넌트 렌더링 */}
         {isModalOpen && (
           <UserManageModal 
             onClose={() => setIsModalOpen(false)} 
@@ -137,7 +129,7 @@ const Mypage = () => {
           />
         )}
 
-        {/* 초기화 경고 모달 */}
+        {/* 3. 분리된 초기화 경고 모달 컴포넌트 렌더링 */}
         {isResetConfirmOpen && (
           <ResetConfirmModal 
             onClose={() => setIsResetConfirmOpen(false)} 
@@ -149,4 +141,4 @@ const Mypage = () => {
   );
 };
 
-export default Mypage;
+export default MypageMain;
