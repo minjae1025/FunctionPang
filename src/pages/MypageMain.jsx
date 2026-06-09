@@ -1,144 +1,309 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import styled from 'styled-components';
 import HistoryTable from '../components/HistoryTable';
 import UserManageModal from '../components/UserManageModal';
 import ResetConfirmModal from '../components/ResetConfirmModal';
+import Header from '../components/Header';
+import { STORAGE_KEYS, generateId } from '@/utils/storage';
+
 const MypageMain = () => {
-  const navigate = useNavigate();
   // --- 상태 관리 ---
+  const [currentUserId, setCurrentUserId] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID) || '';
+  });
   const [currentUser, setCurrentUser] = useState(() => {
-    return localStorage.getItem('functionpang_currentUser') || '';
+    return localStorage.getItem(STORAGE_KEYS.CURRENT_USER) || '';
   });
   const [users, setUsers] = useState([]);
   const [historyData, setHistoryData] = useState([]);
-  const [filterLang, setFilterLang] = useState('Javascript');
+  const [filterLang, setFilterLang] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.CURRENT_LANGUAGE) || 'Javascript';
+  });
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   // --- 로컬 스토리지 연동 ---
   useEffect(() => {
-    const savedUsers = localStorage.getItem('functionpang_users');
-    const savedHistory = localStorage.getItem('functionpang_history');
-    const savedCurrentUser = localStorage.getItem('functionpang_currentUser');
-
-    const dummyNames = ['이민준', '김민재', '윤정후', '박준원'];
+    const savedUsers = localStorage.getItem(STORAGE_KEYS.USERS);
+    const savedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
+    const savedCurrentUserId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
+    const savedCurrentUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
 
     if (savedUsers) {
-      const parsedUsers = JSON.parse(savedUsers).filter(name => !dummyNames.includes(name));
-      setUsers(parsedUsers);
-      if (parsedUsers.length !== JSON.parse(savedUsers).length) {
-        localStorage.setItem('functionpang_users', JSON.stringify(parsedUsers));
+      const parsed = JSON.parse(savedUsers);
+      
+      // 마이그레이션: ID가 없는 유저들에게 ID 부여
+      let needsUpdate = false;
+      const normalizedUsers = parsed.map(u => {
+        if (typeof u === 'string') {
+          needsUpdate = true;
+          return { id: generateId(), name: u, lang: 'Javascript' };
+        }
+        if (!u.id) {
+          needsUpdate = true;
+          return { ...u, id: generateId() };
+        }
+        return u;
+      });
+
+      setUsers(normalizedUsers);
+      if (needsUpdate) {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(normalizedUsers));
+      }
+
+      // 현재 유저 세션 복구 및 검증
+      if (savedCurrentUserId) {
+        const currentExists = normalizedUsers.some(u => u.id === savedCurrentUserId);
+        if (!currentExists) {
+          // ID로 못 찾은 경우 이름으로 한 번 더 검색 (마이그레이션 대비)
+          const userByName = normalizedUsers.find(u => u.name === savedCurrentUser);
+          if (userByName) {
+            setCurrentUserId(userByName.id);
+            localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, userByName.id);
+          } else {
+            // 정말 유저가 없는 경우에만 초기화
+            setCurrentUserId('');
+            setCurrentUser('');
+            localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+            localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+          }
+        }
+      } else if (savedCurrentUser) {
+        // 이름만 있는 경우 마이그레이션된 유저에서 ID 찾기
+        const user = normalizedUsers.find(u => u.name === savedCurrentUser);
+        if (user) {
+          setCurrentUserId(user.id);
+          localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, user.id);
+        }
       }
     }
 
-    if (savedCurrentUser && dummyNames.includes(savedCurrentUser)) {
-      setCurrentUser('');
-      localStorage.removeItem('functionpang_currentUser');
-    }
-    
-    // 더미 데이터 없이 깔끔하게 저장된 기록만 가져오거나 빈 배열 유지
     if (savedHistory) {
-      setHistoryData(JSON.parse(savedHistory));
+      let parsedHistory = JSON.parse(savedHistory);
+      // Migration: Convert array format to object format if needed
+      if (Array.isArray(parsedHistory)) {
+        parsedHistory = parsedHistory.reduce((acc, record) => {
+          const uid = record.userId;
+          if (uid) {
+            if (!acc[uid]) acc[uid] = [];
+            acc[uid].push(record);
+          }
+          return acc;
+        }, {});
+        localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(parsedHistory));
+      }
+      setHistoryData(parsedHistory);
     }
   }, []);
 
   // --- 공통 로직 함수들 ---
   const handleUpdateUsers = (newUsers) => {
     setUsers(newUsers);
-    localStorage.setItem('functionpang_users', JSON.stringify(newUsers));
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(newUsers));
   };
 
-  const handleChangeCurrentUser = (newName) => {
-    setCurrentUser(newName);
-    localStorage.setItem('functionpang_currentUser', newName);
+  const handleUpdateHistory = (newHistory) => {
+    setHistoryData(newHistory);
+    localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(newHistory));
+  };
+
+  const handleChangeCurrentUser = (newId) => {
+    const selectedUser = users.find(u => u.id === newId);
+    if (!selectedUser) {
+      setCurrentUserId('');
+      setCurrentUser('');
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      return;
+    }
+
+    setCurrentUserId(newId);
+    setCurrentUser(selectedUser.name);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newId);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, selectedUser.name);
+    
+    if (selectedUser.lang) {
+      setFilterLang(selectedUser.lang);
+      localStorage.setItem(STORAGE_KEYS.CURRENT_LANGUAGE, selectedUser.lang);
+    }
+  };
+
+  const handleFilterLangChange = (newLang) => {
+    setFilterLang(newLang);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_LANGUAGE, newLang);
   };
 
   const handleConfirmReset = () => {
-    setHistoryData([]);
-    localStorage.setItem('functionpang_history', JSON.stringify([]));
+    // 현재 사용자의 기록만 삭제
+    if (currentUserId && historyData[currentUserId]) {
+        const updatedHistory = { ...historyData, [currentUserId]: [] };
+        handleUpdateHistory(updatedHistory);
+    }
     setIsResetConfirmOpen(false);
   };
 
-  const filteredHistory = historyData.filter(item => 
-    item.lang.toLowerCase() === filterLang.toLowerCase()
-  );
+  const filteredHistory = (historyData[currentUserId] || []).slice(0, 10); // 최대 10개만 출력
 
   return (
-    <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', padding: '0px 0px 40px 0px', fontFamily: '"Noto Sans KR", sans-serif', boxSizing: 'border-box', overflowX: 'hidden' }}>
-      
-      {/* 상단 헤더 */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        backgroundColor: '#f0f0f0', 
-        padding: '25px 60px',
-        marginBottom: '40px',
-        boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
-      }}>
-        <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => navigate('/')}>
-          <img src="함수팡.svg" alt="logo" style={{ height: '48px' }} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <img src="sub_logo.svg" alt="person" style={{ height: '48px' }} />
-        </div>
-      </div>
+    <Container>
+      <Header />
 
-      <div style={{ padding: '0 80px' }}>
-        {/* 타이틀 및 닉네임/언어 선택 */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '20px' }}>
-          <h2 style={{ fontSize: '40px', fontWeight: 'bold', margin: 0, letterSpacing: '-1px' }}>마이페이지</h2>
-          <div style={{ display: 'flex', gap: '40px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <span style={{ fontSize: '13px', color: '#888', marginBottom: '4px' }}>닉네임</span>
-              <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{currentUser}</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <span style={{ fontSize: '13px', color: '#888', marginBottom: '4px' }}>언어</span>
-              <select 
+      <ContentWrapper>
+        <TitleSection>
+          <PageTitle>마이페이지</PageTitle>
+          <InfoSection>
+            <InfoItem>
+              <InfoLabel>닉네임</InfoLabel>
+              <InfoValue>{currentUser || '사용자 없음'}</InfoValue>
+            </InfoItem>
+            <InfoItem>
+              <InfoLabel>언어</InfoLabel>
+              <Select 
                 value={filterLang} 
-                onChange={(e) => setFilterLang(e.target.value)}
-                style={{ padding: '6px 30px 6px 10px', fontSize: '16px', borderRadius: '6px', border: 'none', backgroundColor: '#e9ecef', cursor: 'pointer', fontWeight: '500' }}
+                onChange={(e) => handleFilterLangChange(e.target.value)}
               >
                 <option value="Javascript">Javascript</option>
                 <option value="Python">Python</option>
                 <option value="Java">Java</option>
-              </select>
-            </div>
-          </div>
-        </div>
+              </Select>
+            </InfoItem>
+          </InfoSection>
+        </TitleSection>
 
-        {/* 1. 분리된 테이블 컴포넌트 렌더링 */}
-        <HistoryTable filteredHistory={filteredHistory} />
+        <TableWrapper>
+          <HistoryTable filteredHistory={filteredHistory} style={{ flex: 1 }} />
+        </TableWrapper>
 
-        {/* 하단 버튼들 */}
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <button onClick={() => setIsResetConfirmOpen(true)} style={{ backgroundColor: '#ff7474', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: 'bold' }}>기록 초기화</button>
-          <button onClick={() => setIsModalOpen(true)} style={{ backgroundColor: '#6b8aef', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: 'bold' }}>사용자 관리</button>
-        </div>
+        <ButtonSection>
+          <ResetButton onClick={() => setIsResetConfirmOpen(true)}>기록 초기화</ResetButton>
+          <ManageButton onClick={() => setIsModalOpen(true)}>사용자 관리</ManageButton>
+        </ButtonSection>
 
-        {/* 2. 분리된 사용자 관리 모달 컴포넌트 렌더링 */}
         {isModalOpen && (
           <UserManageModal 
             onClose={() => setIsModalOpen(false)} 
             users={users} 
-            currentUser={currentUser} 
+            currentUserId={currentUserId} 
             onUpdateUsers={handleUpdateUsers} 
             onChangeCurrentUser={handleChangeCurrentUser} 
+            onUpdateHistory={handleUpdateHistory}
+            historyData={historyData}
           />
         )}
 
-        {/* 3. 분리된 초기화 경고 모달 컴포넌트 렌더링 */}
         {isResetConfirmOpen && (
           <ResetConfirmModal 
             onClose={() => setIsResetConfirmOpen(false)} 
             onConfirm={handleConfirmReset} 
           />
         )}
-      </div>
-    </div>
+      </ContentWrapper>
+    </Container>
   );
 };
+
+const Container = styled.div`
+  background-color: #ffffff;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Pretendard', sans-serif;
+  box-sizing: border-box;
+  overflow: hidden;
+`;
+
+const ContentWrapper = styled.div`
+  flex: 1;
+  padding: 0 80px 40px 80px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
+
+const TableWrapper = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 30px;
+`;
+
+const TitleSection = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 20px;
+`;
+
+const PageTitle = styled.h2`
+  font-size: 40px;
+  font-weight: bold;
+  margin: 0;
+  letter-spacing: -1px;
+`;
+
+const InfoSection = styled.div`
+  display: flex;
+  gap: 40px;
+  align-items: start;
+`;
+
+const InfoItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+`;
+
+const InfoLabel = styled.span`
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 4px;
+`;
+
+const InfoValue = styled.span`
+  font-size: 24px;
+  font-weight: bold;
+  height: 38px;
+  display: flex;
+  align-items: center;
+`;
+
+const Select = styled.select`
+  height: 38px;
+  padding: 0 30px 0 10px;
+  font-size: 18px;
+  border-radius: 6px;
+  border: none;
+  background-color: #e9ecef;
+  cursor: pointer;
+  font-weight: 500;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+`;
+
+const ButtonSection = styled.div`
+  display: flex;
+  justify-content: space-between;
+`;
+
+const BaseButton = styled.button`
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
+`;
+
+const ResetButton = styled(BaseButton)`
+  background-color: #ff7474;
+`;
+
+const ManageButton = styled(BaseButton)`
+  background-color: #6b8aef;
+`;
 
 export default MypageMain;

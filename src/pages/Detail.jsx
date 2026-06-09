@@ -1,30 +1,77 @@
+import { useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import ribbon from '@/assets/띠.svg';
+import ribbon from '@/assets/images/ribbon.svg';
+import { generateId, STORAGE_KEYS } from '@/utils/storage';
 
 const Detail = () => {
+  const navigate = useNavigate();
+  const nicknameRef = useRef(null);
+  const languageRef = useRef(null);
+
+  useEffect(() => {
+    const savedUserId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
+    
+    if (savedUserId) {
+      navigate('/home');
+    }
+  }, [navigate]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const nickname = nicknameRef.current.value.trim();
+    const language = languageRef.current.value;
+
+    if (!nickname) {
+      alert('닉네임을 입력해주세요.');
+      return;
+    }
+
+    const savedUsers = localStorage.getItem(STORAGE_KEYS.USERS);
+    let users = savedUsers ? JSON.parse(savedUsers) : [];
+
+    // 중복 체크 (이름 기준)
+    const isDuplicate = users.some(u => (typeof u === 'string' ? u : u.name) === nickname);
+    if (isDuplicate) {
+      alert('이미 존재하는 닉네임입니다.');
+      return;
+    }
+
+    const newUserId = generateId();
+    const newUser = { id: newUserId, name: nickname, lang: language };
+    const updatedUsers = [...users, newUser];
+    
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, nickname);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newUserId);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_LANGUAGE, language);
+
+    navigate('/home');
+  };
+
   return (
     <Page>
       <Ribbon src={ribbon} alt="" aria-hidden="true" />
 
       <Content>
-        <Title>사용자 정보</Title>
+        <Title>사용자 정보 입력</Title>
 
-        <Form>
+        <Form onSubmit={handleSubmit}>
           <Field>
             <FieldLabel htmlFor="nickname">닉네임</FieldLabel>
-            <Input id="nickname" type="text" defaultValue="이민준" />
+            <Input id="nickname" type="text" defaultValue="홍길동" ref={nicknameRef} />
           </Field>
 
           <Field>
             <FieldLabel htmlFor="language">공부할 언어</FieldLabel>
-            <Select id="language" defaultValue="Javascript">
+            <Select id="language" defaultValue="Javascript" ref={languageRef}>
               <option value="Javascript">Javascript</option>
               <option value="Python">Python</option>
               <option value="Java">Java</option>
             </Select>
           </Field>
 
-          <SubmitButton type="button">완료</SubmitButton>
+          <SubmitButton type="submit">완료</SubmitButton>
         </Form>
       </Content>
     </Page>
@@ -43,7 +90,8 @@ const Ribbon = styled.img`
   position: absolute;
   right: 0;
   bottom: 0;
-  width: min(46.094vw, 81.944vh);
+  width: clamp(310px, 47vw, 680px);
+  max-width: 72vw;
   height: auto;
   user-select: none;
   pointer-events: none;
@@ -79,25 +127,25 @@ const Field = styled.div`
   display: flex;
   margin-bottom: 8.148vh;
   flex-direction: column;
-  gap: 1.574vh;
+  gap: 1vh;
 `;
 
 const FieldLabel = styled.label`
   color: #151515;
-  font-size: min(1.875vw, 3.333vh);
+  font-size: 1.6rem; 
   font-weight: 800;
   line-height: 1.2;
   letter-spacing: 0;
+  margin-left: 0.3vw;
 `;
 
 const sharedControlStyle = `
-  width: 100%;
-  height: 6.667vh;
+  height: 6vh;
   border: 0;
-  border-radius: min(0.625vw, 1.111vh);
+  border-radius: min(0.8vw, 1.4vh);
   background: #e7e7e7;
   color: #151515;
-  font-size: min(1.771vw, 3.148vh);
+  font-size: 1.75rem;
   font-weight: 400;
   line-height: 1;
   outline: none;
@@ -105,34 +153,29 @@ const sharedControlStyle = `
 
 const Input = styled.input`
   ${sharedControlStyle}
-  padding: 0 0.885vw;
+  padding: 0px 0px 0.1vh 1.2vw;
 `;
 
 const Select = styled.select`
   ${sharedControlStyle}
-  padding: 0 3.646vw 0 0.885vw;
+  padding: 0vw 0vw 0 1.2vw;
   appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, #050505 50%),
-    linear-gradient(135deg, #050505 50%, transparent 50%);
-  background-position:
-    calc(100% - min(1.823vw, 3.241vh)) min(2.315vh, 1.302vw),
-    calc(100% - min(0.885vw, 1.574vh)) min(2.315vh, 1.302vw);
-  background-size:
-    min(0.99vw, 1.759vh) min(0.99vw, 1.759vh),
-    min(0.99vw, 1.759vh) min(0.99vw, 1.759vh);
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23151515%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E");
   background-repeat: no-repeat;
+  background-position: right 1.0vw center;
+  background-size: 1.8vw;
 `;
 
 const SubmitButton = styled.button`
   align-self: center;
-  width: min(16.667vw, 29.63vh);
-  height: 7.407vh;
+  width: 20vh;
+  height: 6vh;
   margin-top: 6.296vh;
   border: 0;
   border-radius: min(0.521vw, 0.926vh);
   background: #46cd58;
   color: #ffffff;
-  font-size: min(2.188vw, 3.889vh);
+  font-size: 1.75rem;
   font-weight: 500;
   line-height: 1;
   letter-spacing: 0;
