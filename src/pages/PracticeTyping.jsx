@@ -82,7 +82,19 @@ export default function PracticeTyping() {
     e.preventDefault();
     if (showFeedback) return;
 
-    const correct = userInput.trim() === questions[currentIndex].code.trim();
+    // 공백, 세미콜론(JS인 경우), 따옴표(JS인 경우) 제거하여 비교
+    const normalize = (str) => {
+      let s = str.replace(/\s+/g, '');
+      if (lang.toLowerCase() === 'javascript') {
+        s = s.replace(/;+$/, '').replace(/['"]/g, '"');
+      }
+      else if (lang.toLowerCase() === 'python') {
+        s = s.replace(/['"]/g, '"');
+      }
+      return s;
+    };
+
+    const correct = normalize(userInput) === normalize(questions[currentIndex].code);
 
     setIsLastCorrect(correct);
     if (correct) {
