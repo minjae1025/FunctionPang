@@ -1,12 +1,18 @@
 import { Routes, Route } from 'react-router-dom';
+import HomeMain from '../pages/HomeMain';
+import PracticeTyping from '../pages/PracticeTyping';
+import PracticeSubjective from '../pages/PracticeSubjective';
+import PracticeFillBlank from '../pages/PracticeFillBlank';
 
-const Home = () => {
+const Practice = () => {
   return (
     <Routes>
-      <Route path="/" element={<div>Home Page (Main)</div>} />
-      {/* Home 담당자가 여기에 서브 라우트를 자유롭게 추가할 수 있습니다. */}
+      <Route path="/" element={<HomeMain />} />
+      <Route path="/typing" element={<PracticeTyping />} />
+      <Route path="/subjective" element={<PracticeSubjective />} />
+      <Route path="/fill-blank" element={<PracticeFillBlank />} />
     </Routes>
   );
 };
 
-export default Home;
+export default Practice;

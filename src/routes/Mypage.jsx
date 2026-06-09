@@ -1,12 +1,14 @@
+import { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import MypageMain from '../pages/MypageMain';
 
 const Mypage = () => {
+
   return (
     <Routes>
-      <Route path="/" element={<div>My Page (Main)</div>} />
-      {/* Mypage 담당자가 여기에 서브 라우트를 자유롭게 추가할 수 있습니다. */}
+      <Route path="/" element={<MypageMain />} />
     </Routes>
-  );
-};
+  )
+}
 
 export default Mypage;
