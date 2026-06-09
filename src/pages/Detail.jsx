@@ -26,6 +26,10 @@ const Detail = () => {
       alert('닉네임을 입력해주세요.');
       return;
     }
+    else if (nickname.length > 20) {
+      alert('닉네임은 최대 20자까지 입력할 수 있습니다.');
+      return;
+    }
 
     const savedUsers = localStorage.getItem(STORAGE_KEYS.USERS);
     let users = savedUsers ? JSON.parse(savedUsers) : [];

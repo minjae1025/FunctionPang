@@ -41,7 +41,7 @@ export default function PracticeFillBlank() {
     }
   }, [currentIndex, isFinished, showFeedback]);
 
-  // Timer logic for feedback modal
+  // Timer and Enter key logic for feedback modal
   useEffect(() => {
     let interval;
     if (showFeedback) {
@@ -54,8 +54,22 @@ export default function PracticeFillBlank() {
           return prev - 1;
         });
       }, 1000);
+
+      // Enter 키 이벤트 리스너
+      const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          handleNext();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('keydown', handleKeyDown);
+      };
     }
-    return () => clearInterval(interval);
   }, [showFeedback]);
 
   const handleInputChange = (e) => {

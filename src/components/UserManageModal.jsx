@@ -21,6 +21,11 @@ const UserManageModal = ({ onClose, users, currentUserId, onUpdateUsers, onChang
 
   const startEditing = (e, index, name) => {
     e.stopPropagation(); // 이름 클릭(선택) 방지
+    if (name.length > 20) {
+      alert('닉네임은 최대 20자까지 입력할 수 있습니다.');
+      return;
+    }
+
     setEditIndex(index);
     setEditName(name);
   };
