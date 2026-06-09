@@ -82,7 +82,9 @@ export default function PracticeTyping() {
     e.preventDefault();
     if (showFeedback) return;
 
-    const correct = userInput.trim() === questions[currentIndex].code.trim();
+    // 공백을 모두 제거하여 비교
+    const normalize = (str) => str.replace(/\s+/g, '');
+    const correct = normalize(userInput) === normalize(questions[currentIndex].code);
 
     setIsLastCorrect(correct);
     if (correct) {
