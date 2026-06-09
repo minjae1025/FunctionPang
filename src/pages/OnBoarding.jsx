@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
-import logo from '@/assets/함수팡.svg';
-import ribbon from '@/assets/띠.svg';
+import logo from '@/assets/images/function_pang.svg';
+import ribbon from '@/assets/images/ribbon.svg';
 
 const dots = [
   { id: 1, left: '16.7%', delay: '0s' },

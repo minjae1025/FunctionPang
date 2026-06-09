@@ -1,22 +1,18 @@
-import { Navigate, Routes, Route, useNavigate } from 'react-router-dom';
-import Detail from '@/pages/Detail';
-import OnBoarding from '@/pages/OnBoarding';
+import { Routes, Route } from 'react-router-dom';
+import HomeMain from '../pages/HomeMain';
+import PracticeTyping from '../pages/PracticeTyping';
+import PracticeSubjective from '../pages/PracticeSubjective';
+import PracticeFillBlank from '../pages/PracticeFillBlank';
 
-const Home = () => {
+const Practice = () => {
   return (
     <Routes>
-      <Route path="/" element={<OnBoardingRoute />} />
-      <Route path="/detail" element={<Detail />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-      {/* Home 담당자가 여기에 서브 라우트를 자유롭게 추가할 수 있습니다. */}
+      <Route path="/" element={<HomeMain />} />
+      <Route path="/typing" element={<PracticeTyping />} />
+      <Route path="/subjective" element={<PracticeSubjective />} />
+      <Route path="/fill-blank" element={<PracticeFillBlank />} />
     </Routes>
   );
 };
 
-const OnBoardingRoute = () => {
-  const navigate = useNavigate();
-
-  return <OnBoarding onFinish={() => navigate('/detail', { replace: true })} />;
-};
-
-export default Home;
+export default Practice;
