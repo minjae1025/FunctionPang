@@ -63,10 +63,11 @@ export default function HomeMain() {
 }
 
 const Container = styled.div`
-  min-height: 100vh;
+  height: 100vh;
   background-color: #f9f9f9;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 `;
 
 const Main = styled.main`
@@ -75,6 +76,7 @@ const Main = styled.main`
   flex-direction: column;
   align-items: center;
   padding: 40px 20px;
+  overflow-y: auto;
 `;
 
 const TitleSection = styled.div`
