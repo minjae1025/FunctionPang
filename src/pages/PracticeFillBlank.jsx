@@ -2,6 +2,8 @@ import styled from 'styled-components';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
+import PracticeFeedbackModal from '@/components/PracticeFeedbackModal';
+import PracticeResult from '@/components/PracticeResult';
 import { STORAGE_KEYS, savePracticeRecord } from '@/utils/storage';
 
 export default function PracticeFillBlank() {
@@ -10,6 +12,7 @@ export default function PracticeFillBlank() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInput, setUserInput] = useState('');
   const [score, setScore] = useState(0);
+  const [incorrectQuestions, setIncorrectQuestions] = useState([]);
   const [isFinished, setIsFinished] = useState(false);
   const [lang, setLang] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
@@ -55,7 +58,6 @@ export default function PracticeFillBlank() {
         });
       }, 1000);
 
-      // Enter 키 이벤트 리스너
       const handleKeyDown = (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -87,6 +89,8 @@ export default function PracticeFillBlank() {
     setIsLastCorrect(correct);
     if (correct) {
       setScore(prev => prev + 10);
+    } else {
+      setIncorrectQuestions(prev => [...prev, questions[currentIndex]]);
     }
     setShowFeedback(true);
     setTimer(10);
@@ -116,16 +120,12 @@ export default function PracticeFillBlank() {
 
   if (isFinished) {
     return (
-      <Container>
-        <Header />
-        <ResultSection>
-          <ResultTitle>학습 완료!</ResultTitle>
-          <ScoreText>당신의 점수는 <span>{score}</span>점 입니다.</ScoreText>
-          <ButtonArea>
-            <ActionButton $bgColor="#8fd242" onClick={() => navigate('/home')}>메뉴로 돌아가기</ActionButton>
-          </ButtonArea>
-        </ResultSection>
-      </Container>
+      <PracticeResult 
+        score={score} 
+        incorrectQuestions={incorrectQuestions}
+        onBack={() => navigate('/home')} 
+        bgColor="#8fd242"
+      />
     );
   }
 
@@ -141,6 +141,7 @@ export default function PracticeFillBlank() {
           <CodeDisplay>
             <code>{currentQuestion.code}</code>
           </CodeDisplay>
+          <ExpectedOutput>기대 결과: {currentQuestion.expected_output}</ExpectedOutput>
           <InstructionText>빈칸(____)에 들어갈 함수명을 입력하세요.</InstructionText>
         </QuestionBox>
 
@@ -158,24 +159,14 @@ export default function PracticeFillBlank() {
         </InputForm>
       </Main>
 
-      {showFeedback && (
-        <ModalOverlay>
-          <ModalContent>
-            <FeedbackIcon>{isLastCorrect ? '✅' : '❌'}</FeedbackIcon>
-            <FeedbackTitle $isCorrect={isLastCorrect}>
-              {isLastCorrect ? '정답입니다!' : '아쉬워요, 오답입니다.'}
-            </FeedbackTitle>
-            {!isLastCorrect && (
-              <CorrectAnswerBox>
-                <AnswerLabel>정답:</AnswerLabel>
-                <AnswerValue>{currentQuestion.function_name}</AnswerValue>
-              </CorrectAnswerBox>
-            )}
-            <TimerText><span>{timer}</span>초 후 자동으로 넘어갑니다.</TimerText>
-            <NextButton $bgColor="#8fd242" onClick={handleNext}>다음 문제</NextButton>
-          </ModalContent>
-        </ModalOverlay>
-      )}
+      <PracticeFeedbackModal 
+        show={showFeedback}
+        isCorrect={isLastCorrect}
+        correctAnswer={currentQuestion.function_name}
+        timer={timer}
+        onNext={handleNext}
+        bgColor="#8fd242"
+      />
     </Container>
   );
 }
@@ -237,6 +228,14 @@ const InstructionText = styled.p`
   color: #888;
 `;
 
+const ExpectedOutput = styled.p`
+  font-size: 20px;
+  color: #374cd3;
+  font-weight: 600;
+  margin-top: 15px;
+  margin-bottom: 5px;
+`;
+
 const InputForm = styled.form`
   width: 100%;
   max-width: 800px;
@@ -273,133 +272,6 @@ const SubmitButton = styled.button`
   border-radius: 12px;
   cursor: pointer;
   transition: opacity 0.2s;
-
-  &:hover {
-    opacity: 0.9;
-  }
-`;
-
-const ResultSection = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-bottom: 100px;
-`;
-
-const ResultTitle = styled.h2`
-  font-size: 60px;
-  margin-bottom: 30px;
-`;
-
-const ScoreText = styled.p`
-  font-size: 40px;
-  margin-bottom: 50px;
-  
-  span {
-    color: #8fd242;
-    font-weight: 800;
-  }
-`;
-
-const ButtonArea = styled.div`
-  display: flex;
-  gap: 20px;
-`;
-
-const ActionButton = styled.button`
-  padding: 20px 40px;
-  font-size: 24px;
-  font-weight: 600;
-  color: white;
-  background: ${props => props.$bgColor};
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-
-  &:hover {
-    opacity: 0.9;
-  }
-`;
-
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-`;
-
-const ModalContent = styled.div`
-  background: white;
-  width: 90%;
-  max-width: 450px;
-  padding: 50px 30px;
-  border-radius: 24px;
-  text-align: center;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-`;
-
-const FeedbackIcon = styled.div`
-  font-size: 64px;
-  margin-bottom: 20px;
-`;
-
-const FeedbackTitle = styled.h3`
-  font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 20px;
-  color: ${props => props.$isCorrect ? '#46cd58' : '#8fd242'};
-`;
-
-const CorrectAnswerBox = styled.div`
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 12px;
-  margin-bottom: 25px;
-  border: 1px solid #eee;
-`;
-
-const AnswerLabel = styled.div`
-  font-size: 16px;
-  color: #888;
-  margin-bottom: 5px;
-`;
-
-const AnswerValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
-  color: #333;
-  font-family: 'Courier New', Courier, monospace;
-`;
-
-const TimerText = styled.p`
-  font-size: 18px;
-  color: #666;
-  margin-bottom: 30px;
-  
-  span {
-    font-weight: 700;
-    color: #333;
-  }
-`;
-
-const NextButton = styled.button`
-  width: 100%;
-  padding: 18px;
-  font-size: 20px;
-  font-weight: 600;
-  color: white;
-  background: ${props => props.$bgColor};
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
 
   &:hover {
     opacity: 0.9;
