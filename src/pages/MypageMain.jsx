@@ -101,6 +101,16 @@ const MypageMain = () => {
   const handleUpdateUsers = (newUsers) => {
     setUsers(newUsers);
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(newUsers));
+    
+    // 현재 선택된 유저의 정보가 수정되었는지 확인 후 업데이트
+    const updatedCurrentUser = newUsers.find(u => u.id === currentUserId);
+    if (updatedCurrentUser && updatedCurrentUser.name !== currentUser) {
+      setCurrentUser(updatedCurrentUser.name);
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, updatedCurrentUser.name);
+      
+      // Header에 닉네임 변경 알림
+      window.dispatchEvent(new Event('userUpdated'));
+    }
   };
 
   const handleUpdateHistory = (newHistory) => {

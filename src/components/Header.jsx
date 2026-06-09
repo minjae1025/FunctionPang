@@ -9,15 +9,23 @@ const Header = () => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState('');
 
+  const updateUserName = () => {
+    const savedUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+    setCurrentUser(savedUser || '');
+  };
+
+  useEffect(() => {
+    updateUserName();
+
+    // 사용자 정보 변경 시 실시간 반영을 위한 이벤트 리스너
+    window.addEventListener('userUpdated', updateUserName);
+    return () => window.removeEventListener('userUpdated', updateUserName);
+  }, []);
+
   useEffect(() => {
     const savedUserId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
     if (!savedUserId) {
       navigate('/detail');
-    }
-
-    const savedUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    if (savedUser) {
-      setCurrentUser(savedUser);
     }
   }, [navigate]);
 
