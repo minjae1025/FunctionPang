@@ -2,6 +2,8 @@ import styled from 'styled-components';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
+import PracticeFeedbackModal from '@/components/PracticeFeedbackModal';
+import PracticeResult from '@/components/PracticeResult';
 import { STORAGE_KEYS, savePracticeRecord } from '@/utils/storage';
 
 export default function PracticeTyping() {
@@ -10,20 +12,22 @@ export default function PracticeTyping() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInput, setUserInput] = useState('');
   const [score, setScore] = useState(0);
+  const [incorrectQuestions, setIncorrectQuestions] = useState([]);
   const [isFinished, setIsFinished] = useState(false);
   const [lang, setLang] = useState('');
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [isLastCorrect, setIsLastCorrect] = useState(false);
+  const [timer, setTimer] = useState(10);
   const inputRef = useRef(null);
 
   useEffect(() => {
     const currentLang = localStorage.getItem(STORAGE_KEYS.CURRENT_LANGUAGE) || 'Javascript';
     setLang(currentLang);
     
-    // Load questions dynamically
     const loadQuestions = async () => {
       try {
         const module = await import(`../data/questions/${currentLang.toLowerCase()}.json`);
         const allQuestions = module.default.typing;
-        // Shuffle and take 10
         const shuffled = [...allQuestions].sort(() => 0.5 - Math.random()).slice(0, 10);
         setQuestions(shuffled);
       } catch (error) {
@@ -35,10 +39,40 @@ export default function PracticeTyping() {
   }, []);
 
   useEffect(() => {
-    if (inputRef.current) {
+    if (inputRef.current && !showFeedback) {
       inputRef.current.focus();
     }
-  }, [currentIndex, isFinished]);
+  }, [currentIndex, isFinished, showFeedback]);
+
+  // Timer and Enter key logic for feedback modal
+  useEffect(() => {
+    let interval;
+    if (showFeedback) {
+      interval = setInterval(() => {
+        setTimer((prev) => {
+          if (prev <= 1) {
+            handleNext();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          handleNext();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [showFeedback]);
 
   const handleInputChange = (e) => {
     setUserInput(e.target.value);
@@ -46,10 +80,22 @@ export default function PracticeTyping() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (userInput.trim() === questions[currentIndex].code.trim()) {
-      setScore(prev => prev + 10);
-    }
+    if (showFeedback) return;
 
+    const correct = userInput.trim() === questions[currentIndex].code.trim();
+
+    setIsLastCorrect(correct);
+    if (correct) {
+      setScore(prev => prev + 10);
+    } else {
+      setIncorrectQuestions(prev => [...prev, questions[currentIndex]]);
+    }
+    setShowFeedback(true);
+    setTimer(10);
+  };
+
+  const handleNext = () => {
+    setShowFeedback(false);
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(prev => prev + 1);
       setUserInput('');
@@ -72,16 +118,12 @@ export default function PracticeTyping() {
 
   if (isFinished) {
     return (
-      <Container>
-        <Header />
-        <ResultSection>
-          <ResultTitle>학습 완료!</ResultTitle>
-          <ScoreText>당신의 점수는 <span>{score}</span>점 입니다.</ScoreText>
-          <ButtonArea>
-            <ActionButton onClick={() => navigate('/home')}>메뉴로 돌아가기</ActionButton>
-          </ButtonArea>
-        </ResultSection>
-      </Container>
+      <PracticeResult 
+        score={score} 
+        incorrectQuestions={incorrectQuestions}
+        onBack={() => navigate('/home')} 
+        bgColor="#374cd3"
+      />
     );
   }
 
@@ -97,6 +139,7 @@ export default function PracticeTyping() {
           <CodeDisplay>
             <code>{currentQuestion.code}</code>
           </CodeDisplay>
+          <ExpectedOutput>기대 결과: {currentQuestion.expected_output}</ExpectedOutput>
         </QuestionBox>
 
         <InputForm onSubmit={handleSubmit}>
@@ -107,10 +150,20 @@ export default function PracticeTyping() {
             onChange={handleInputChange}
             placeholder="위 코드를 똑같이 입력하세요"
             autoFocus
+            disabled={showFeedback}
           />
-          <SubmitButton type="submit">다음</SubmitButton>
+          <SubmitButton type="submit">제출</SubmitButton>
         </InputForm>
       </Main>
+
+      <PracticeFeedbackModal 
+        show={showFeedback}
+        isCorrect={isLastCorrect}
+        correctAnswer={currentQuestion.code}
+        timer={timer}
+        onNext={handleNext}
+        bgColor="#374cd3"
+      />
     </Container>
   );
 }
@@ -165,6 +218,14 @@ const CodeDisplay = styled.div`
   line-height: 1.4;
 `;
 
+const ExpectedOutput = styled.p`
+  font-size: 20px;
+  color: #374cd3;
+  font-weight: 600;
+  margin-top: 15px;
+  margin-bottom: 5px;
+`;
+
 const InputForm = styled.form`
   width: 100%;
   max-width: 800px;
@@ -200,49 +261,5 @@ const SubmitButton = styled.button`
 
   &:hover {
     opacity: 0.9;
-  }
-`;
-
-const ResultSection = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-bottom: 100px;
-`;
-
-const ResultTitle = styled.h2`
-  font-size: 60px;
-  margin-bottom: 30px;
-`;
-
-const ScoreText = styled.p`
-  font-size: 40px;
-  margin-bottom: 50px;
-  
-  span {
-    color: #374cd3;
-    font-weight: 800;
-  }
-`;
-
-const ButtonArea = styled.div`
-  display: flex;
-  gap: 20px;
-`;
-
-const ActionButton = styled.button`
-  padding: 20px 40px;
-  font-size: 24px;
-  font-weight: 600;
-  color: white;
-  background: #374cd3;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-
-  &:hover {
-    background: #2a3eb1;
   }
 `;
