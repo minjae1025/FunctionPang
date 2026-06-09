@@ -280,7 +280,7 @@ const InfoValue = styled.span`
 
 const Select = styled.select`
   height: 38px;
-  padding: 0 30px 0 10px;
+  padding: 0 50px 0 10px;
   font-size: 18px;
   border-radius: 6px;
   border: none;
